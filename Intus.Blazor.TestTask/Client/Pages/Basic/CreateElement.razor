@@ -1,0 +1,26 @@
+﻿@page "/basic/createelement"
+@inject HttpClient http
+@inject NavigationManager uriHelper
+@inject IJSRuntime js
+
+<h3>Create Element</h3>
+
+<ElementForm ButtonText="Create Element" element="@elements" OnValidSubmit="@CreateElements" />
+
+@code
+{
+    Elements elements = new Elements();
+    async Task CreateElements()
+    {
+        try
+        {
+            // Sent Element info into API to save it into Database
+            await http.PostAsJsonAsync("api/element", elements);
+            uriHelper.NavigateTo("basic");
+        }
+        catch (Exception ex)
+        {
+            await js.InvokeVoidAsync("alert", ex.Message);
+        }
+    }
+}

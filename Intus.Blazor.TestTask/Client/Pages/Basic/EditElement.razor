@@ -1,0 +1,42 @@
+﻿@page "/basic/editelement/{elementId:int}"
+@inject HttpClient http
+@inject NavigationManager uriHelper
+@inject IJSRuntime js
+
+<h3>Edit</h3>
+
+<ElementForm ButtonText="Update" element="elements"  OnValidSubmit="@EditElements" />
+
+@code 
+{ 
+    [Parameter] public int elementId { get; set; }
+    Elements elements = new Elements();
+
+    protected async override Task OnParametersSetAsync()
+    {
+        // Read Element with Id
+        try
+        {
+            elements = await http.GetFromJsonAsync<Elements>($"api/element/{elementId}");
+        }
+        catch (Exception ex)
+        {
+            await js.InvokeVoidAsync("alert", ex.Message);
+        }
+    }
+
+    async Task EditElements()
+    {
+        try
+        {
+            // Sent Element info into API to Update it into Database
+            await http.PutAsJsonAsync("api/element", elements);
+            await js.InvokeVoidAsync("alert", $"Updated Successfully!");
+            uriHelper.NavigateTo("basic");
+        }
+        catch (Exception ex)
+        {
+            await js.InvokeVoidAsync("alert", ex.Message);
+        }
+    }
+}

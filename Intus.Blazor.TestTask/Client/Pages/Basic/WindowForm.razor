@@ -1,0 +1,30 @@
+﻿<EditForm Model="@window" OnValidSubmit="@OnValidSubmit">
+    <DataAnnotationsValidator />
+    <div class="form-group">
+        <label>Window Name :</label>
+        <div>
+            <InputText @bind-Value="@window.WindowName" />
+            <ValidationMessage For="@(() => window.WindowName)" />
+        </div>
+    </div>
+
+    <table>
+        <tr>
+            <td>
+                <button type="submit" class="btn btn-success">
+                    @ButtonText
+                </button>
+            </td>
+            <td>
+                <a class="btn btn-info" href="basic">Cancel</a>
+            </td>
+        </tr>
+    </table>
+</EditForm>
+
+@code 
+{
+    [Parameter] public Windows window { get; set; }
+    [Parameter] public string ButtonText { get; set; } = "Save";
+    [Parameter] public EventCallback OnValidSubmit { get; set; }
+}

@@ -1,0 +1,42 @@
+﻿@page "/basic/editwindow/{windowId:int}"
+@inject HttpClient http
+@inject NavigationManager uriHelper
+@inject IJSRuntime js
+
+<h3>Edit</h3>
+
+<WindowForm ButtonText="Update" window="window" OnValidSubmit="@EditWindows" />
+
+@code
+ { 
+    [Parameter] public int windowId { get; set; }
+    Windows window = new Windows();
+
+    protected async override Task OnParametersSetAsync()
+    {
+        // Read Window with Id
+        try
+        {
+            window = await http.GetFromJsonAsync<Windows>($"api/window/{windowId}");
+        }
+        catch(Exception ex)
+        {
+            await js.InvokeVoidAsync("alert", ex.Message);
+        }
+    }
+
+    async Task EditWindows()
+    {
+        // Sent Element info into API to update it into Database
+        try
+        {
+            await http.PutAsJsonAsync("api/window", window);
+            await js.InvokeVoidAsync("alert", $"Updated Successfully!");
+            uriHelper.NavigateTo("basic");
+        }
+        catch(Exception ex)
+        {
+            await js.InvokeVoidAsync("alert", ex.Message);
+        }
+    }
+}

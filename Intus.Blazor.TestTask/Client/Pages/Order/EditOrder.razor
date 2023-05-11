@@ -1,0 +1,295 @@
+﻿@page "/order/editorder/{orderId:int}"
+@inject HttpClient client
+@inject NavigationManager uriHelper
+@inject IJSRuntime js
+
+<h3>Create Order</h3>
+<EditForm Model="@order">
+    <DataAnnotationsValidator />
+    <div class="form-group">
+        <div class="row">
+            <div class="col-sm-3">
+                <label>Order Name</label>
+                <div>
+                    <InputText @bind-Value="@order.OrderName" />
+                </div>
+            </div>
+            <div class="col-sm-3">
+                <label>State</label>
+                <div>
+                    <InputText @bind-Value="@order.State" />
+                </div>
+            </div>
+            <div class="col-sm-3">
+                <label>Full Address</label>
+                <div>
+                    <InputTextArea @bind-Value="@order.FullAddress" />
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="form-group">
+        <table>
+            <tr>
+                <td width="10%">
+                    Window :
+                </td>
+                <td width="25%">
+                    <InputSelect @bind-Value="@windowsID">
+                        <option value="0">Please select Window</option>
+                        @if (windowList != null && windowList.Length > 0)
+                        {
+                            @foreach (var wind in windowList)
+                            {
+                                <option value="@wind.Id">@wind.WindowName</option>
+                            }
+                        }
+                    </InputSelect>
+                </td>
+                <td width="15%">
+                    <button class="btn btn-success" @onclick="@OnSubmitWindow">Add Window</button>
+                </td>
+                <td width="10%">
+                    Element :
+                </td>
+                <td width="25%">
+                    <InputSelect @bind-Value="@elementID">
+                        <option value="0">Please select Element</option>
+                        @if (elementList != null && elementList.Length > 0)
+                        {
+                            @foreach (var elmnt in elementList)
+                            {
+                                <option value="@elmnt.Id">@elmnt.ElementName - @elmnt.Type</option>
+                            }
+                        }
+                    </InputSelect>
+                </td>
+                <td width="15%">
+                    <button class="btn btn-success" @onclick="@OnSubmitElement">Add Element</button>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div class="form-group">
+        @if (detailOrderList != null && detailOrderList.Count > 0)
+        {
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Window Name</th>
+                        <th>Quantity of Windows</th>
+                        <th>Element Name</th>
+                        <th>Element Type</th>
+                        <th>Width</th>
+                        <th>Height</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (OrderDetails oDetails in detailOrderList.OrderBy(a => a.WindowID).ThenBy(a => a.ElementID))
+                    {
+                        @if (detailOrderList.OrderBy(a => a.WindowID).ThenBy(a => a.ElementID).ToList().IndexOf(oDetails) > 0 && oDetails.WindowID == detailOrderList.OrderBy(a => a.WindowID).ThenBy(a => a.ElementID).ToList()[detailOrderList.OrderBy(a => a.WindowID).ThenBy(a => a.ElementID).ToList().IndexOf(oDetails) - 1].WindowID)
+                        {
+                            <tr>
+                                <td></td>
+                                <td>
+                                </td>
+                                <td>@oDetails.ElementName</td>
+                                <td>@oDetails.Type</td>
+                                <td>@oDetails.Width</td>
+                                <td>@oDetails.Height</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            <tr>
+                                <td>@oDetails.WindowName</td>
+                                <td>
+                                    <div>
+                                        <InputNumber @bind-Value="@oDetails.Quantity" />
+                                    </div>
+                                </td>
+                                <td>@oDetails.ElementName</td>
+                                <td>@oDetails.Type</td>
+                                <td>@oDetails.Width</td>
+                                <td>@oDetails.Height</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+    <table>
+        <tr>
+            <td>
+                <button type="submit" class="btn btn-success" @onclick="@OnSubmitSave">
+                    Update
+                </button>
+            </td>
+            <td>
+                <a class="btn btn-info" href="order">Cancel</a>
+            </td>
+        </tr>
+    </table>
+</EditForm>
+
+@code
+{
+    // Edit Window
+    //windowsID and elementID are used for storing selected value of Window and Element Dropdown
+
+    string windowsID = "0";
+    string elementID = "0";
+    Orders order = new Orders();
+    Windows[] windowList { get; set; }
+    Elements[] elementList { get; set; }
+
+    //List of all Window and Element for this Order
+
+    List<OrderDetails> detailOrderList = new List<OrderDetails>();
+    public EventCallback OnValidSubmit { get; set; }
+    [Parameter] public int orderId { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Read all Window and Element for Dropdown
+
+            windowList = await client.GetFromJsonAsync<Windows[]>("api/window");
+            elementList = await client.GetFromJsonAsync<Elements[]>("api/element");
+
+            //Read current Order details 
+
+            OrderDetails[] ordersAll = await client.GetFromJsonAsync<OrderDetails[]>("api/orderwindow");
+            detailOrderList = ordersAll.Where(a => a.OrderId == orderId).OrderBy(a => a.WindowID).ThenBy(a => a.ElementID).ToList();
+            order.Id = detailOrderList[0].OrderId;
+            order.OrderName = detailOrderList[0].OrderName;
+            order.State = detailOrderList[0].State;
+            order.FullAddress = detailOrderList[0].FullAddress;
+        }
+        catch(Exception ex)
+        {
+            await js.InvokeVoidAsync("alert", ex.Message);
+        }
+    }
+    async Task OnSubmitSave()
+    {
+        //Save function to Update Order and it's child Windows & Elements
+
+        if (order.OrderName.Length <= 0 || order.State.Length <= 0)
+        {
+            await js.InvokeVoidAsync("alert", $"Order Name and State is required!");
+        }
+
+        //Only send one List to API. So, add Order Name, State and Full Address with the first element of this list.
+
+        detailOrderList.OrderBy(a => a.WindowID).ThenBy(a => a.ElementID).ToList()[0].OrderName = order.OrderName;
+        detailOrderList.OrderBy(a => a.WindowID).ThenBy(a => a.ElementID).ToList()[0].State = order.State;
+        detailOrderList.OrderBy(a => a.WindowID).ThenBy(a => a.ElementID).ToList()[0].FullAddress = order.FullAddress;
+
+        try
+        {
+            await client.PutAsJsonAsync("api/order", detailOrderList.OrderBy(a => a.WindowID).ThenBy(a => a.ElementID).ToList());
+            await js.InvokeVoidAsync("alert", $"Updated Successfully!");
+            uriHelper.NavigateTo("order");
+        }
+        catch(Exception ex)
+        {
+            await js.InvokeVoidAsync("alert", ex.Message);
+        }
+    }
+    protected void OnSubmitWindow(MouseEventArgs mouseEventArgs)
+    {
+        int windID = int.Parse(windowsID);
+        int elemnt = int.Parse(elementID);
+        if (windID <= 0)
+        {
+            // No windows selected
+            return;
+        }
+        AddData(windID, elemnt);
+    }
+    protected void OnSubmitElement(MouseEventArgs mouseEventArgs)
+    {
+        int windID = int.Parse(windowsID);
+        int elemnt = int.Parse(elementID);
+        if (windID <= 0)
+        {
+            // No windows selected
+            return;
+        }
+        AddData(windID, elemnt);
+    }
+    public void AddData(int windID, int elemntID)
+    {
+        //Add Window and Element with the list for this Order.
+
+        string windowName = "";
+        string elmentName = "";
+        string elementType = "";
+        int width = 0;
+        int height = 0;
+        OrderDetails detailExisting;
+        if (windID > 0)
+        {
+            // Window Details from Window List for this selection
+
+            windowName = windowList.Where(a => a.Id == windID).FirstOrDefault().WindowName;
+        }
+        if (elemntID > 0)
+        {
+            // Element Details from Element List for this selection
+
+            elmentName = elementList.Where(a => a.Id == elemntID).FirstOrDefault().ElementName;
+            elementType = elementList.Where(a => a.Id == elemntID).FirstOrDefault().Type;
+            width = elementList.Where(a => a.Id == elemntID).FirstOrDefault().Width;
+            height = elementList.Where(a => a.Id == elemntID).FirstOrDefault().Height;
+        }
+        if (detailOrderList != null && detailOrderList.Count > 0)
+        {
+            // Check this Window already selected or not.
+
+            detailExisting = detailOrderList.Where(a => a.WindowID == windID).FirstOrDefault();
+            if (detailExisting != null)
+            {
+                // This Window already added at before
+
+                if (detailExisting.ElementID == elemntID || elemntID == 0)
+                {
+                    // Already added as top Element with window or Element not selected.
+                    return;
+                }
+                else if (detailExisting.ElementID == 0)
+                {
+                    // Window added without element
+
+                    detailExisting.ElementID = elemntID;
+                    detailExisting.ElementName = elmentName;
+                    detailExisting.Type = elementType;
+                    detailExisting.Width = width;
+                    detailExisting.Height = width;
+                    return;
+                }
+                OrderDetails detailExistingForElement = detailOrderList.Where(a => a.WindowID == windID && a.ElementID == elemntID).FirstOrDefault();
+                if (detailExistingForElement != null)
+                {
+                    //This Element is already added with this Window but not as top element
+                    return;
+                }
+            }
+        }
+
+        //New Item to list
+        OrderDetails detail = new OrderDetails();
+
+        detail.WindowID = windID;
+        detail.WindowName = windowName;
+        detail.ElementID = elemntID;
+        detail.ElementName = elmentName;
+        detail.Type = elementType;
+        detail.Width = width;
+        detail.Height = width;
+        detail.Quantity = 0;
+        detailOrderList.Add(detail);
+    }
+}

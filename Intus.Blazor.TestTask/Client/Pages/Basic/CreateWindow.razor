@@ -1,0 +1,26 @@
+﻿@page "/basic/createwindow"
+@inject HttpClient http
+@inject NavigationManager uriHelper
+@inject IJSRuntime js
+
+<h3>Create Window</h3>
+
+<WindowForm ButtonText="Create Window" window="@window" OnValidSubmit="@CreateWindows" />
+
+@code
+{
+    Windows window = new Windows();
+    async Task CreateWindows()
+    {
+        try
+        {
+            // Sent Window info into API to save it into Database
+            await http.PostAsJsonAsync("api/window", window);
+            uriHelper.NavigateTo("basic");
+        }
+        catch (Exception ex)
+        {
+            await js.InvokeVoidAsync("alert", ex.Message);
+        }
+    }
+}

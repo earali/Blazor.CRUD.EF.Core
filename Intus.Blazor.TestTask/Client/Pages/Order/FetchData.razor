@@ -1,0 +1,137 @@
+﻿@page "/order"
+@inject HttpClient client
+@inject IJSRuntime js
+
+<h3>Orders</h3>
+<small>Add Order.</small>
+<div class="form-group">
+    <a class="btn btn-success" href="order/createorder"><i class="oi oi-plus"></i> Add Order</a>
+</div>
+<br>
+
+@if (orderList == null)
+{
+    <text>Loading...</text> 
+}
+else if (orderList.Count == 0)
+{
+    <text>No Records Found.</text> 
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Order ID</th>
+                <th>Order Name</th>
+                <th>State</th>
+                <th>Window Name</th>
+                <th>Quantity of Windows</th>
+                <th>Element Name</th>
+                <th>Element Type</th>
+                <th>Width</th>
+                <th>Height</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (OrderDetails detail in orderList)
+            {
+                @if (orderList.IndexOf(detail) > 0 && detail.OrderId == orderList[orderList.IndexOf(detail) - 1].OrderId)
+                {
+                    @if (detail.WindowID == orderList[orderList.IndexOf(detail) - 1].WindowID)
+                    {
+                        <tr>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td>@detail.ElementName</td>
+                            <td>@detail.Type</td>
+                            <td>@detail.Width</td>
+                            <td>@detail.Height</td>
+                            <td>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        <tr>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td>@detail.WindowName</td>
+                            <td>@detail.Quantity</td>
+                            <td>@detail.ElementName</td>
+                            <td>@detail.Type</td>
+                            <td>@detail.Width</td>
+                            <td>@detail.Height</td>
+                            <td>
+                            </td>
+                        </tr>
+                    }
+
+                }
+                else
+                {
+                    <tr>
+                        <td>@detail.OrderId</td>
+                        <td>@detail.OrderName</td>
+                        <td>@detail.State</td>
+                        <td>@detail.WindowName</td>
+                        <td>@detail.Quantity</td>
+                        <td>@detail.ElementName</td>
+                        <td>@detail.Type</td>
+                        <td>@detail.Width</td>
+                        <td>@detail.Height</td>
+                        <td>
+                            <a class="btn btn-success" href="order/editorder/@detail.OrderId">Edit</a>
+                            <button class="btn btn-danger" @onclick="() => DeleteOrder(detail.OrderId)">Delete</button>
+                        </td>
+                    </tr>
+                }
+            }
+
+        </tbody>
+    </table>
+}
+
+
+@code
+{
+    // Orders
+
+    List<OrderDetails> orderList = new List<OrderDetails>();
+    protected override async Task OnInitializedAsync()
+    {
+        //Read all Orders from Database
+        try
+        {
+            OrderDetails[] ordersAll = await client.GetFromJsonAsync<OrderDetails[]>("api/orderwindow");
+            orderList = ordersAll.OrderBy(a => a.OrderId).ThenBy(a => a.WindowID).ThenBy(a => a.ElementID).ToList();
+        }
+        catch(Exception ex)
+        {
+            await js.InvokeVoidAsync("alert", ex.Message);
+        }
+    }
+
+
+    async Task DeleteOrder(int orderId)
+    {
+        try
+        {
+            var dev = orderList.First(x => x.OrderId == orderId);
+            if (await js.InvokeAsync<bool>("confirm", $"Do you want to delete {dev.OrderName}'s ({dev.OrderId}) Record?"))
+            {
+                await client.DeleteAsync($"api/order/{orderId}");
+                await OnInitializedAsync();
+            }
+        }
+        catch(Exception ex)
+        {
+            await js.InvokeVoidAsync("alert", ex.Message);
+        }
+    }
+}

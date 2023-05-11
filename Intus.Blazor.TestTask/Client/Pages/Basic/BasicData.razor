@@ -1,0 +1,150 @@
+﻿@page "/basic"
+@inject HttpClient client
+@inject IJSRuntime js
+
+<h3>Windows</h3>
+<small>Add Window.</small>
+<div class="form-group">
+    <a class="btn btn-success" href="basic/createwindow"><i class="oi oi-plus"></i> Add Window</a>
+</div>
+<br>
+
+@if (windows == null)
+{
+    <text>Loading...</text> 
+}
+else if (windows.Length == 0)
+{
+    <text>No Records Found.</text> 
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Window Name</th>
+                <th>Edit</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (Windows dev in windows)
+            {
+                <tr>
+                    <td>@dev.Id</td>
+                    <td>@dev.WindowName</td>
+                    <td>
+                        <a class="btn btn-success" href="basic/editwindow/@dev.Id">Edit</a>
+                    </td>
+                </tr>
+            }
+
+        </tbody>
+    </table>
+}
+
+<h3>Elements</h3>
+<small>Add Element.</small>
+<div class="form-group">
+    <a class="btn btn-success" href="basic/createelement"><i class="oi oi-plus"></i> Add Element</a>
+</div>
+<br>
+
+@if (elements == null)
+{
+    <text>Loading...</text> 
+}
+else if (elements.Length == 0)
+{
+    <text>No Records Found.</text> 
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Element Name</th>
+                <th>Type</th>
+                <th>Width</th>
+                <th>Height</th>
+                <th>Edit</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (Elements dev in elements)
+            {
+            <tr>
+                <td>@dev.Id</td>
+                <td>@dev.ElementName</td>
+                <td>@dev.Type</td>
+                <td>@dev.Width</td>
+                <td>@dev.Height</td>
+                <td>
+                    <a class="btn btn-success" href="basic/editelement/@dev.Id">Edit</a>
+                </td>
+            </tr>
+            }
+
+        </tbody>
+    </table>
+}
+
+@code 
+{ 
+    // Windows
+    Windows[] windows { get; set; }
+
+    // Elements
+
+    Elements[] elements { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            windows = await client.GetFromJsonAsync<Windows[]>("api/window");
+            elements = await client.GetFromJsonAsync<Elements[]>("api/element");
+        }
+        catch (Exception ex)
+        {
+            await js.InvokeVoidAsync("alert", ex.Message);
+        }
+    }
+
+    async Task DeleteWindow(int windowId)
+    {
+        try
+        {
+            var dev = windows.First(x => x.Id == windowId);
+            if (await js.InvokeAsync<bool>("confirm", $"Do you want to delete {dev.WindowName}'s ({dev.Id}) Record?"))
+            {
+                await client.DeleteAsync($"api/window/{windowId}");
+                await OnInitializedAsync();
+            }
+        }
+        catch(Exception ex)
+        {
+            await js.InvokeVoidAsync("alert", ex.Message);
+        }
+    }
+
+
+
+    async Task DeleteElement(int elementId)
+    {
+        try
+        {
+            var dev = elements.First(x => x.Id == elementId);
+            if (await js.InvokeAsync<bool>("confirm", $"Do you want to delete {dev.ElementName}'s ({dev.Id}) Record?"))
+            {
+                await client.DeleteAsync($"api/element/{elementId}");
+                await OnInitializedAsync();
+            }
+        }
+        catch(Exception ex)
+        {
+            await js.InvokeVoidAsync("alert", ex.Message);
+        }
+    }
+}
+
